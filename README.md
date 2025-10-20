@@ -3,11 +3,6 @@
 
 
 
-**Author:** Robert Gorman  
-
-**Status:** Week 1 - In Progress
-
-
 
 ## Project Overview
 
