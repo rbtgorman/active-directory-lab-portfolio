@@ -1,0 +1,7 @@
+
+*.iso
+
+*.qcow2
+
+*password*
+
