@@ -10,6 +10,11 @@
 
 Building a Windows Server 2022 Active Directory lab to demonstrate enterprise administration skills.
 
+## Screenshots
+
+### Windows Server 2022 Installation
+
+![DC01 Installation](screenshots/VMSS.png)
 
 
 ## Progress
