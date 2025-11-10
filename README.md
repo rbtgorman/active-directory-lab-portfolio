@@ -28,7 +28,7 @@ Maria,Garcia,mgarcia,IT,Network Engineer,Building A
 
 ### Custom password:
 ```powershell
-.\New-BulkADUsers.ps1 -CsvPath "C:\ADScripts\NewUsers.csv" -DefaultPassword "SecurePass2025!"
+.\New-BulkADUsers.ps1 -CsvPath "C:\ADScripts\NewUsers.csv" -DefaultPassword "***********"
 ```
 
 ## My Test Results
