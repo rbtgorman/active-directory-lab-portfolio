@@ -1,7 +1,5 @@
-
 *.iso
-
 *.qcow2
-
 *password*
-
+!gap6-powershell/password-reset-tool/
+!gap6-powershell/password-reset-tool/**
