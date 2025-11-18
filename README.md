@@ -48,13 +48,6 @@ Real-world automation scripts demonstrating help desk and systems administration
 - ✅ Audit logging and compliance
 - ✅ Git version control and documentation
 
-## Resume-Ready Achievements
-Each project includes:
-- **Business value statements** with quantified outcomes
-- **STAR method** interview talking points
-- **Screenshot documentation** of working implementations
-- **Production-ready code** with error handling and logging
-
 ## How to Navigate This Portfolio
 1. **Start with PowerShell projects:** `/gap6-powershell/` directory
 2. **Each project folder contains:**
