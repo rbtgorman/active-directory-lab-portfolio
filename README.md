@@ -85,4 +85,4 @@ This portfolio directly addresses System Administrator IV requirements:
 
 **Created by Robert Gorman** | Building practical enterprise IT skills through hands-on lab work
 
-**Contact:** [LinkedIn] (https://www.linkedin.com/in/robert-gorman-638852149/) | rbtgorman@github
+**Contact:** [LinkedIn] (https://www.linkedin.com/in/robert-gorman-638852149) 
