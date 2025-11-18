@@ -1,78 +1,88 @@
-# Bulk AD User Creation Script
+# Active Directory Lab Portfolio
 
-## What It Does
+## Overview
+Hands-on Windows Server and Active Directory administration lab demonstrating enterprise IT skills for System Administrator roles. This portfolio showcases practical automation, troubleshooting, and administration capabilities built in a real domain environment.
 
-Takes a CSV file of new users and creates them all in Active Directory automatically - with proper department OUs, security group assignments, and error handling. No more clicking through AD Users & Computers for 20 minutes per user.
+## Purpose
+Building demonstrable technical competencies to qualify for System Administrator positions, with focus on:
+- Windows Server & Active Directory administration
+- PowerShell automation and scripting
+- Help desk and systems administration workflows
+- Enterprise IT best practices
 
-**Key Features:**
-- Reads user data from CSV (like HR would provide)
-- Automatically puts users in the right department OU
-- Adds them to the right security groups
-- Handles errors without crashing
-- Logs everything for audit trails
-- Generates a completion report
+## Lab Environment
+- **Platform:** Windows Server 2022 Domain Controller
+- **Domain:** lab.local
+- **Infrastructure:** KVM virtualization on Linux host
+- **Development:** VS Code on Linux → SSH to Windows Server
+- **Version Control:** Git with documentation and screenshots
 
-## How to Use It
+## Projects & Skills
 
-### Basic command:
-```powershell
-.\New-BulkADUsers.ps1 -CsvPath "C:\ADScripts\NewUsers.csv"
-```
+### PowerShell Automation (`gap6-powershell/`)
+Real-world automation scripts demonstrating help desk and systems administration capabilities:
 
-### CSV format (what HR would send):
-```csv
-FirstName,LastName,SamAccountName,Department,Title,Office
-James,Wilson,jwilson,IT,Systems Administrator,Building A
-Maria,Garcia,mgarcia,IT,Network Engineer,Building A
-```
+#### 1. [Bulk AD User Creation](gap6-powershell/bulk-user-creation/)
+- **Business Impact:** Reduces user provisioning time from 10+ minutes to seconds
+- **Skills:** CSV parsing, AD user management, OU placement, security group assignment
+- **Features:** Error handling, audit logging, batch processing
 
-### Custom password:
-```powershell
-.\New-BulkADUsers.ps1 -CsvPath "C:\ADScripts\NewUsers.csv" -DefaultPassword "***********"
-```
+#### 2. [Password Reset Automation](gap6-powershell/password-reset-tool/)
+- **Business Impact:** Reduces password reset ticket resolution time by 75%
+- **Skills:** AD user account management, secure password generation, account unlock
+- **Features:** Audit logging, error handling, help desk workflow automation
 
-## My Test Results
-
-**Lab Environment:**
-- Domain: lab.local
-- Domain Controller: DC01
-- Test: 5 users across IT, HR, and Finance departments
-
-**Results:**
-- ✅ All 5 users created successfully
-- ✅ Automatically placed in correct OUs
-- ✅ Security groups assigned properly
-- ✅ No errors
-
-### Screenshot Evidence
-![Bulk User Creation - OU Placement - Created Users](screenshots/ss-bulkusercreation-ouplacement-createdlist.png)
-![Group Membership - CSV Report](screenshots/ss-groupmembership-csvreport.png)
-
-## What I Learned
-
-**Mistakes I made:**
-- First version used `[switch]` for a boolean parameter - PowerShell threw a type conversion error
-- Learned the difference between switch parameters and boolean values
-- Fixed it by changing to `[bool]$ChangePasswordAtLogon = $true`
-
-## What's Next
-
-Now that I've got bulk user creation down, I'm building more PowerShell automation scripts:
-- Password reset tool for Help Desk scenarios
-- AD health check report (finding inactive accounts)
+### Coming Soon
+- AD health check reporting (inactive accounts, password expiry)
 - Group membership auditing
-- Eventually: full user lifecycle management (create → modify → disable → delete)
+- Endpoint management (KACE/Intune concepts)
+- Network troubleshooting scenarios (DHCP/DNS)
 
-## My Lab Setup
+## Technical Skills Demonstrated
+- ✅ Windows Server 2022 administration
+- ✅ Active Directory Users and Computers
+- ✅ PowerShell scripting and automation
+- ✅ Organizational Unit (OU) design and management
+- ✅ Security group management
+- ✅ Error handling and input validation
+- ✅ Audit logging and compliance
+- ✅ Git version control and documentation
 
-This runs on my home lab:
-- Windows Server 2022 Domain Controller
-- KVM virtualization on Linux host
-- Development workflow: VS Code on Linux → SSH to Windows VM → test scripts
-- All documented in GitHub for portfolio
+## Resume-Ready Achievements
+Each project includes:
+- **Business value statements** with quantified outcomes
+- **STAR method** interview talking points
+- **Screenshot documentation** of working implementations
+- **Production-ready code** with error handling and logging
+
+## How to Navigate This Portfolio
+1. **Start with PowerShell projects:** `/gap6-powershell/` directory
+2. **Each project folder contains:**
+   - Complete script with comments
+   - Detailed README with business impact
+   - Screenshots demonstrating functionality
+   - Testing methodology and results
+
+## Lab Setup Details
+- **Virtualization:** KVM/QEMU on Linux
+- **Domain Controller:** DC01.lab.local (Windows Server 2022)
+- **Development Workflow:** 
+  - Write scripts in VS Code on Linux
+  - Transfer via SSH/SCP to Windows VM
+  - Test in real AD environment
+  - Document with screenshots
+  - Commit to GitHub portfolio
+
+## Target Role Requirements
+This portfolio directly addresses System Administrator IV requirements:
+- Windows Server and Active Directory administration ✅
+- PowerShell automation ✅ (in progress)
+- Endpoint deployment concepts (KACE/Intune) 🔄
+- Network troubleshooting (DHCP/DNS/VLAN) 🔄
+- Enterprise printing (Papercut/queues) 🔄
 
 ---
 
-**Bottom line:** This shows my ability to  write PowerShell to automate AD tasks, which is exactly what the System Admin IV job requires. I'm not just reading about PowerShell - I'm actually building working automation in a real AD environment.
+**Created by Robert Gorman** | Building practical enterprise IT skills through hands-on lab work
 
-**Portfolio:** [github.com/rbtgorman/active-directory-lab-portfolio](https://github.com/rbtgorman/active-directory-lab-portfolio)
+**Contact:** [LinkedIn](#) | rbtgorman@github
