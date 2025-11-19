@@ -3,6 +3,12 @@
 ## Overview
 PowerShell automation script that creates multiple Active Directory users from CSV input, with automatic OU placement and security group assignment.
 
+### Screenshot Evidence
+![Success Summary](screenshots/ss-bulkusercreation-ouplacement-createdlist.png)
+![User Verification](screenshots/ss-groupmembership-csvreport.png)
+
+
+
 ## Business Problem Solved
 Manual AD user creation is time-consuming and error-prone. This script:
 - Reduces user provisioning time from 10+ minutes per user to seconds for bulk operations
@@ -79,10 +85,6 @@ David,Brown,dbrown,Finance,Financial Analyst,Building C
 - ✅ Failed: 0
 - ✅ All users placed in correct OUs
 - ✅ All users assigned to appropriate security groups
-
-### Screenshot Evidence
-![Success Summary](screenshots/ss-bulkusercreation-ouplacement-createdlist.png)
-![User Verification](screenshots/ss-groupmembership-csvreport.png)
 
 
 ## Future Enhancements
