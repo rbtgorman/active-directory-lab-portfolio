@@ -81,38 +81,9 @@ David,Brown,dbrown,Finance,Financial Analyst,Building C
 - ✅ All users assigned to appropriate security groups
 
 ### Screenshot Evidence
-![Success Summary](screenshots/01-bulk-user-creation-success.png)
-![User Verification](screenshots/02-ad-users-created-list.png)
-![OU Placement](screenshots/03-ad-users-ou-placement.png)
-![Group Membership](screenshots/04-group-membership-verification.png)
+![Success Summary](screenshots/ss-bulkusercreation-ouplacement-createdlist.png)
+![User Verification](screenshots/ss-groupmembership-csvreport.png)
 
-## Real-World Application
-This script addresses a common enterprise need:
-- **Onboarding**: Bulk create accounts for new employee cohorts
-- **Contractors**: Rapidly provision temporary accounts
-- **Testing**: Generate test users for development environments
-- **Mergers**: Integrate acquired company employees efficiently
-
-## Interview Talking Points (STAR Method)
-
-**Situation:** Manual AD user creation was time-consuming and prone to inconsistent configuration.
-
-**Task:** Develop an automated solution to create AD users from HR-provided data while ensuring consistent security group assignments and OU placement.
-
-**Action:** Created a PowerShell script that:
-- Imports CSV data with validation
-- Automatically determines correct OU based on department
-- Creates users with complete attribute sets
-- Assigns security groups programmatically
-- Logs all actions for audit compliance
-
-**Result:** Reduced user provisioning time by 90% (from 10+ minutes per user to batch processing in seconds), eliminated manual entry errors, and provided complete audit trail through timestamped CSV reports.
-
-## Lessons Learned
-1. **Parameter Types Matter**: Initially used `[switch]` for boolean parameter, causing type conversion error. Corrected to `[bool]` type.
-2. **Error Handling**: Comprehensive try/catch blocks prevent script failure on individual user errors.
-3. **Duplicate Prevention**: Checking for existing users before creation prevents script errors.
-4. **Splatting Efficiency**: Using hash tables for parameters improves code readability and maintenance.
 
 ## Future Enhancements
 - [ ] Email notification on completion
