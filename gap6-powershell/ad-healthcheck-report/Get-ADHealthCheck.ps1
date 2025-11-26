@@ -1,118 +1,57 @@
 <#
-Active Directory health check and security audit tool
+    Get-ADHealthCheck.ps1 - Scans AD for inactive accounts, lockouts, expiring passwords
 #>
 
-[CmdletBinding()]
 param(
-    [Parameter(Mandatory=$false)]
     [int]$InactiveDays = 90,
-    
-    [Parameter(Mandatory=$false)]
     [int]$PasswordExpiryWarning = 7,
-    
-    [Parameter(Mandatory=$false)]
     [string]$OutputPath = "C:\Reports"
 )
 
-# Import Active Directory module
 Import-Module ActiveDirectory -ErrorAction Stop
 
-# Create output directory if it doesn't exist
-if (-not (Test-Path $OutputPath)) {
-    New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
-    Write-Host "Created output directory: $OutputPath" -ForegroundColor Green
-}
+if (!(Test-Path $OutputPath)) { mkdir $OutputPath -Force | Out-Null }
 
-# Initialize report timestamp
 $Timestamp = Get-Date -Format "yyyy-MM-dd_HHmmss"
 $ReportDate = Get-Date -Format "MMMM dd, yyyy HH:mm:ss"
-
-Write-Host "`n========================================" -ForegroundColor Cyan
-Write-Host "Active Directory Health Check Report" -ForegroundColor Cyan
-Write-Host "========================================`n" -ForegroundColor Cyan
-
-# Calculate date thresholds
 $InactiveDate = (Get-Date).AddDays(-$InactiveDays)
 $PasswordExpiryDate = (Get-Date).AddDays($PasswordExpiryWarning)
 
-Write-Host "Checking for accounts inactive since: $($InactiveDate.ToString('yyyy-MM-dd'))" -ForegroundColor Yellow
-Write-Host "Checking for passwords expiring before: $($PasswordExpiryDate.ToString('yyyy-MM-dd'))" -ForegroundColor Yellow
-Write-Host ""
+Write-Host "`nChecking for accounts inactive since: $($InactiveDate.ToString('yyyy-MM-dd'))" -ForegroundColor Yellow
+Write-Host "Checking for passwords expiring before: $($PasswordExpiryDate.ToString('yyyy-MM-dd'))`n" -ForegroundColor Yellow
 
-# 1. Find Inactive User Accounts
+# Inactive users
 Write-Host "[1/4] Scanning for inactive user accounts..." -ForegroundColor Cyan
-try {
-    $InactiveUsers = Get-ADUser -Filter {Enabled -eq $true} -Properties LastLogonDate, Department, Title |
-        Where-Object {
-            ($_.LastLogonDate -eq $null) -or ($_.LastLogonDate -lt $InactiveDate)
-        } |
-        Select-Object Name, SamAccountName, Department, Title, LastLogonDate, 
-            @{Name='DaysInactive';Expression={
-                if ($_.LastLogonDate) {
-                    [math]::Round((New-TimeSpan -Start $_.LastLogonDate -End (Get-Date)).TotalDays)
-                } else {
-                    "Never logged in"
-                }
-            }}
-    
-    Write-Host "   Found $($InactiveUsers.Count) inactive accounts" -ForegroundColor $(if($InactiveUsers.Count -gt 0){"Yellow"}else{"Green"})
-} catch {
-    Write-Host "   ERROR: Failed to check inactive accounts - $($_.Exception.Message)" -ForegroundColor Red
-    $InactiveUsers = @()
-}
+$InactiveUsers = Get-ADUser -Filter {Enabled -eq $true} -Properties LastLogonDate, Department, Title |
+    Where-Object { !$_.LastLogonDate -or $_.LastLogonDate -lt $InactiveDate } |
+    Select-Object Name, SamAccountName, Department, Title, LastLogonDate,
+        @{N='DaysInactive';E={ if ($_.LastLogonDate) { [math]::Round(((Get-Date) - $_.LastLogonDate).TotalDays) } else { "Never logged in" } }}
+Write-Host "    Found $($InactiveUsers.Count) inactive accounts" -ForegroundColor $(if($InactiveUsers.Count -gt 0){"Yellow"}else{"Green"})
 
-# 2. Find Locked Out Accounts
+# Locked accounts
 Write-Host "[2/4] Scanning for locked out accounts..." -ForegroundColor Cyan
-try {
-    $LockedAccounts = Search-ADAccount -LockedOut |
-        Get-ADUser -Properties Department, Title, LockedOut, LastBadPasswordAttempt |
-        Select-Object Name, SamAccountName, Department, Title, LockedOut, LastBadPasswordAttempt
-    
-    Write-Host "   Found $($LockedAccounts.Count) locked accounts" -ForegroundColor $(if($LockedAccounts.Count -gt 0){"Red"}else{"Green"})
-} catch {
-    Write-Host "   ERROR: Failed to check locked accounts - $($_.Exception.Message)" -ForegroundColor Red
-    $LockedAccounts = @()
-}
+$LockedAccounts = Search-ADAccount -LockedOut | Get-ADUser -Properties Department, Title, LastBadPasswordAttempt |
+    Select-Object Name, SamAccountName, Department, Title, LastBadPasswordAttempt
+Write-Host "    Found $($LockedAccounts.Count) locked accounts" -ForegroundColor $(if($LockedAccounts.Count -gt 0){"Red"}else{"Green"})
 
-# 3. Find Users with Expiring Passwords
+# Expiring passwords
 Write-Host "[3/4] Scanning for expiring passwords..." -ForegroundColor Cyan
-try {
-    # Get domain password policy
-    $DefaultMaxPasswordAge = (Get-ADDefaultDomainPasswordPolicy).MaxPasswordAge.Days
-    
-    $ExpiringPasswords = Get-ADUser -Filter {Enabled -eq $true -and PasswordNeverExpires -eq $false} -Properties PasswordLastSet, PasswordNeverExpires, Department, Title |
-        Where-Object {
-            $_.PasswordLastSet -ne $null -and 
-            ($_.PasswordLastSet.AddDays($DefaultMaxPasswordAge)) -lt $PasswordExpiryDate
-        } |
-        Select-Object Name, SamAccountName, Department, Title, PasswordLastSet,
-            @{Name='ExpiryDate';Expression={$_.PasswordLastSet.AddDays($DefaultMaxPasswordAge)}},
-            @{Name='DaysUntilExpiry';Expression={
-                [math]::Round((New-TimeSpan -Start (Get-Date) -End ($_.PasswordLastSet.AddDays($DefaultMaxPasswordAge))).TotalDays)
-            }}
-    
-    Write-Host "   Found $($ExpiringPasswords.Count) expiring passwords" -ForegroundColor $(if($ExpiringPasswords.Count -gt 0){"Yellow"}else{"Green"})
-} catch {
-    Write-Host "   ERROR: Failed to check expiring passwords - $($_.Exception.Message)" -ForegroundColor Red
-    $ExpiringPasswords = @()
-}
+$MaxPwdAge = (Get-ADDefaultDomainPasswordPolicy).MaxPasswordAge.Days
+$ExpiringPasswords = Get-ADUser -Filter {Enabled -eq $true -and PasswordNeverExpires -eq $false} -Properties PasswordLastSet, Department, Title |
+    Where-Object { $_.PasswordLastSet -and $_.PasswordLastSet.AddDays($MaxPwdAge) -lt $PasswordExpiryDate } |
+    Select-Object Name, SamAccountName, Department, Title, PasswordLastSet,
+        @{N='ExpiryDate';E={$_.PasswordLastSet.AddDays($MaxPwdAge)}},
+        @{N='DaysUntilExpiry';E={ [math]::Round(($_.PasswordLastSet.AddDays($MaxPwdAge) - (Get-Date)).TotalDays) }}
+Write-Host "    Found $($ExpiringPasswords.Count) expiring passwords" -ForegroundColor $(if($ExpiringPasswords.Count -gt 0){"Yellow"}else{"Green"})
 
-# 4. Find Disabled Accounts in Active OUs (potential cleanup needed)
+# Disabled in wrong OU
 Write-Host "[4/4] Scanning for disabled accounts in active OUs..." -ForegroundColor Cyan
-try {
-    # Get all disabled users NOT in Disabled Users OU
-    $DisabledInWrongOU = Get-ADUser -Filter {Enabled -eq $false} -Properties DistinguishedName, Department, Title, WhenChanged |
-        Where-Object {$_.DistinguishedName -notmatch "OU=Disabled"} |
-        Select-Object Name, SamAccountName, Department, Title, 
-            @{Name='CurrentOU';Expression={($_.DistinguishedName -split ',',2)[1]}},
-            WhenChanged
-    
-    Write-Host "   Found $($DisabledInWrongOU.Count) disabled accounts needing relocation" -ForegroundColor $(if($DisabledInWrongOU.Count -gt 0){"Yellow"}else{"Green"})
-} catch {
-    Write-Host "   ERROR: Failed to check disabled accounts - $($_.Exception.Message)" -ForegroundColor Red
-    $DisabledInWrongOU = @()
-}
+$DisabledInWrongOU = Get-ADUser -Filter {Enabled -eq $false} -Properties Department, Title, WhenChanged |
+    Where-Object { $_.DistinguishedName -notmatch "OU=Disabled" } |
+    Select-Object Name, SamAccountName, Department, Title, @{N='CurrentOU';E={($_.DistinguishedName -split ',',2)[1]}}, WhenChanged
+Write-Host "    Found $($DisabledInWrongOU.Count) disabled accounts needing relocation" -ForegroundColor $(if($DisabledInWrongOU.Count -gt 0){"Yellow"}else{"Green"})
 
+# Summary
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "Summary Statistics" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
@@ -121,7 +60,6 @@ Write-Host "Locked Accounts: $($LockedAccounts.Count)" -ForegroundColor $(if($Lo
 Write-Host "Expiring Passwords: $($ExpiringPasswords.Count)" -ForegroundColor $(if($ExpiringPasswords.Count -gt 0){"Yellow"}else{"Green"})
 Write-Host "Disabled (Wrong OU): $($DisabledInWrongOU.Count)" -ForegroundColor $(if($DisabledInWrongOU.Count -gt 0){"Yellow"}else{"Green"})
 
-# Generate HTML Report
 Write-Host "`nGenerating HTML report..." -ForegroundColor Cyan
 
 $HtmlReport = @"
@@ -154,7 +92,6 @@ $HtmlReport = @"
         <p>Generated: $ReportDate</p>
         <p>Domain: $((Get-ADDomain).DNSRoot)</p>
     </div>
-
     <div class="summary">
         <div class="summary-box $(if($InactiveUsers.Count -gt 0){'warning'}else{'good'})">
             <h2>$($InactiveUsers.Count)</h2>
@@ -173,92 +110,56 @@ $HtmlReport = @"
             <p>Disabled (Wrong OU)</p>
         </div>
     </div>
-
     <div class="section">
-        <h2> Inactive User Accounts ($($InactiveUsers.Count))</h2>
+        <h2>Inactive User Accounts ($($InactiveUsers.Count))</h2>
         <p>Accounts with no logon activity in the last $InactiveDays days:</p>
         $(if ($InactiveUsers.Count -gt 0) {
             "<table><tr><th>Name</th><th>Username</th><th>Department</th><th>Title</th><th>Last Logon</th><th>Days Inactive</th></tr>"
-            $InactiveUsers | ForEach-Object {
-                "<tr><td>$($_.Name)</td><td>$($_.SamAccountName)</td><td>$($_.Department)</td><td>$($_.Title)</td><td>$($_.LastLogonDate)</td><td>$($_.DaysInactive)</td></tr>"
-            }
+            $InactiveUsers | ForEach-Object { "<tr><td>$($_.Name)</td><td>$($_.SamAccountName)</td><td>$($_.Department)</td><td>$($_.Title)</td><td>$($_.LastLogonDate)</td><td>$($_.DaysInactive)</td></tr>" }
             "</table>"
-        } else {
-            "<p style='color: green;'>[OK] No inactive accounts found</p>"
-        })
+        } else { "<p style='color: green;'>No inactive accounts found</p>" })
     </div>
-
     <div class="section">
-        <h2> Locked Out Accounts ($($LockedAccounts.Count))</h2>
+        <h2>Locked Out Accounts ($($LockedAccounts.Count))</h2>
         <p>User accounts currently locked due to failed login attempts:</p>
         $(if ($LockedAccounts.Count -gt 0) {
             "<table><tr><th>Name</th><th>Username</th><th>Department</th><th>Title</th><th>Last Bad Password</th></tr>"
-            $LockedAccounts | ForEach-Object {
-                "<tr><td>$($_.Name)</td><td>$($_.SamAccountName)</td><td>$($_.Department)</td><td>$($_.Title)</td><td>$($_.LastBadPasswordAttempt)</td></tr>"
-            }
+            $LockedAccounts | ForEach-Object { "<tr><td>$($_.Name)</td><td>$($_.SamAccountName)</td><td>$($_.Department)</td><td>$($_.Title)</td><td>$($_.LastBadPasswordAttempt)</td></tr>" }
             "</table>"
-        } else {
-            "<p style='color: green;'>[OK] No locked accounts found</p>"
-        })
+        } else { "<p style='color: green;'>No locked accounts found</p>" })
     </div>
-
     <div class="section">
-        <h2> Expiring Passwords ($($ExpiringPasswords.Count))</h2>
+        <h2>Expiring Passwords ($($ExpiringPasswords.Count))</h2>
         <p>Passwords expiring within the next $PasswordExpiryWarning days:</p>
         $(if ($ExpiringPasswords.Count -gt 0) {
             "<table><tr><th>Name</th><th>Username</th><th>Department</th><th>Password Last Set</th><th>Expiry Date</th><th>Days Until Expiry</th></tr>"
-            $ExpiringPasswords | ForEach-Object {
-                "<tr><td>$($_.Name)</td><td>$($_.SamAccountName)</td><td>$($_.Department)</td><td>$($_.PasswordLastSet)</td><td>$($_.ExpiryDate)</td><td>$($_.DaysUntilExpiry)</td></tr>"
-            }
+            $ExpiringPasswords | ForEach-Object { "<tr><td>$($_.Name)</td><td>$($_.SamAccountName)</td><td>$($_.Department)</td><td>$($_.PasswordLastSet)</td><td>$($_.ExpiryDate)</td><td>$($_.DaysUntilExpiry)</td></tr>" }
             "</table>"
-        } else {
-            "<p style='color: green;'>[OK] No passwords expiring soon</p>"
-        })
+        } else { "<p style='color: green;'>No passwords expiring soon</p>" })
     </div>
-
     <div class="section">
-        <h2> Disabled Accounts in Active OUs ($($DisabledInWrongOU.Count))</h2>
+        <h2>Disabled Accounts in Active OUs ($($DisabledInWrongOU.Count))</h2>
         <p>Disabled accounts that should be moved to Disabled Users OU:</p>
         $(if ($DisabledInWrongOU.Count -gt 0) {
             "<table><tr><th>Name</th><th>Username</th><th>Department</th><th>Current OU</th><th>Last Changed</th></tr>"
-            $DisabledInWrongOU | ForEach-Object {
-                "<tr><td>$($_.Name)</td><td>$($_.SamAccountName)</td><td>$($_.Department)</td><td>$($_.CurrentOU)</td><td>$($_.WhenChanged)</td></tr>"
-            }
+            $DisabledInWrongOU | ForEach-Object { "<tr><td>$($_.Name)</td><td>$($_.SamAccountName)</td><td>$($_.Department)</td><td>$($_.CurrentOU)</td><td>$($_.WhenChanged)</td></tr>" }
             "</table>"
-        } else {
-            "<p style='color: green;'>[OK] All disabled accounts in correct location</p>"
-        })
+        } else { "<p style='color: green;'>All disabled accounts in correct location</p>" })
     </div>
-
     <div class="footer">
-        <p>Report generated by AD Health Check Tool | Robert Gorman</p>
+        <p>AD Health Check Tool | Robert Gorman</p>
         <p>Domain Controller: $env:COMPUTERNAME</p>
     </div>
 </body>
 </html>
 "@
 
-# Save HTML Report
 $HtmlPath = Join-Path $OutputPath "ADHealthCheck_$Timestamp.html"
-$HtmlReport | Out-File -FilePath $HtmlPath -Encoding UTF8
+$HtmlReport | Out-File $HtmlPath -Encoding UTF8
 
-# Export detailed CSV files
 if ($InactiveUsers.Count -gt 0) {
-    $CsvPath = Join-Path $OutputPath "InactiveUsers_$Timestamp.csv"
-    $InactiveUsers | Export-Csv -Path $CsvPath -NoTypeInformation
-    Write-Host "Exported inactive users to: $CsvPath" -ForegroundColor Green
-}
-
-if ($LockedAccounts.Count -gt 0) {
-    $CsvPath = Join-Path $OutputPath "LockedAccounts_$Timestamp.csv"
-    $LockedAccounts | Export-Csv -Path $CsvPath -NoTypeInformation
-    Write-Host "Exported locked accounts to: $CsvPath" -ForegroundColor Green
-}
-
-if ($ExpiringPasswords.Count -gt 0) {
-    $CsvPath = Join-Path $OutputPath "ExpiringPasswords_$Timestamp.csv"
-    $ExpiringPasswords | Export-Csv -Path $CsvPath -NoTypeInformation
-    Write-Host "Exported expiring passwords to: $CsvPath" -ForegroundColor Green
+    $InactiveUsers | Export-Csv (Join-Path $OutputPath "InactiveUsers_$Timestamp.csv") -NoTypeInformation
+    Write-Host "Exported inactive users to: $OutputPath\InactiveUsers_$Timestamp.csv" -ForegroundColor Green
 }
 
 Write-Host "`n========================================" -ForegroundColor Green
