@@ -1,105 +1,58 @@
 <#
-    Resets Active Directory user passwords and unlocks accounts.
+    Reset-ADPassword.ps1
+    Resets password and optionally unlocks account
 #>
 
-[CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory)]
     [string]$Username,
-
-    [Parameter(Mandatory=$false)]
     [string]$NewPassword,
-
-    [Parameter(Mandatory=$false)]
     [switch]$UnlockAccount,
-
-    [Parameter(Mandatory=$false)]
     [string]$LogPath = "C:\Logs\PasswordResets.log"
 )
 
-# Function to generate secure random password
 function New-RandomPassword {
-    param([int]$Length = 12)
-    
     $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"
-    $password = -join ((1..$Length) | ForEach-Object { $chars[(Get-Random -Maximum $chars.Length)] })
-    return $password
+    -join (1..12 | ForEach-Object { $chars[(Get-Random -Maximum $chars.Length)] })
 }
 
-# Function to write to log file
-function Write-Log {
-    param([string]$Message)
+function Write-Log($Message) {
+    $logDir = Split-Path $LogPath
+    if (!(Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
     
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logMessage = "$timestamp - $Message"
-    
-    # Create log directory if it doesn't exist
-    $logDir = Split-Path -Path $LogPath -Parent
-    if (!(Test-Path -Path $logDir)) {
-        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
-    }
-    
-    Add-Content -Path $LogPath -Value $logMessage
-    Write-Verbose $logMessage
+    "$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')) - $Message" | Add-Content $LogPath
 }
 
-# Main script logic
+# Main
 try {
-    Write-Log "Starting password reset process for user: $Username"
-    
-    # Import Active Directory module
     Import-Module ActiveDirectory -ErrorAction Stop
-    Write-Log "Active Directory module loaded successfully"
     
-    # Check if user exists
-    $user = Get-ADUser -Identity $Username -Properties LockedOut -ErrorAction Stop
-    Write-Log "User $Username found in Active Directory (DN: $($user.DistinguishedName))"
+    $user = Get-ADUser $Username -Properties LockedOut -ErrorAction Stop
+    Write-Log "Password reset initiated for $Username"
     
-    # Generate password if not provided
-    if ([string]::IsNullOrEmpty($NewPassword)) {
+    if (!$NewPassword) {
         $NewPassword = New-RandomPassword
-        Write-Log "Generated secure random password for $Username"
-    } else {
-        Write-Log "Using provided password for $Username"
     }
     
-    # Convert password to secure string
-    $SecurePassword = ConvertTo-SecureString -String $NewPassword -AsPlainText -Force
+    $SecurePass = ConvertTo-SecureString $NewPassword -AsPlainText -Force
+    Set-ADAccountPassword -Identity $Username -NewPassword $SecurePass -Reset
+    Set-ADUser $Username -ChangePasswordAtLogon $true
     
-    # Reset the password
-    Set-ADAccountPassword -Identity $Username -NewPassword $SecurePassword -Reset -ErrorAction Stop
-    Write-Log "Password reset successful for $Username"
-    
-    # Force password change at next logon
-    Set-ADUser -Identity $Username -ChangePasswordAtLogon $true -ErrorAction Stop
-    Write-Log "Set ChangePasswordAtLogon flag for $Username"
-    
-    # Unlock account if requested and if locked
-    if ($UnlockAccount) {
-        if ($user.LockedOut) {
-            Unlock-ADAccount -Identity $Username -ErrorAction Stop
-            Write-Log "Account unlocked for $Username"
-        } else {
-            Write-Log "Account was not locked for $Username - no unlock needed"
-        }
-    }
-    
-    # Display success message
-    Write-Host "`n=== Password Reset Successful ===" -ForegroundColor Green
-    Write-Host "User: $Username" -ForegroundColor Cyan
-    Write-Host "Temporary Password: $NewPassword" -ForegroundColor Yellow
-    Write-Host "Password Change Required: Yes" -ForegroundColor Cyan
     if ($UnlockAccount -and $user.LockedOut) {
-        Write-Host "Account Status: Unlocked" -ForegroundColor Green
+        Unlock-ADAccount $Username
+        Write-Log "Unlocked account: $Username"
     }
-    Write-Host "`nLog file: $LogPath" -ForegroundColor Gray
-    Write-Host "=================================`n" -ForegroundColor Green
     
-    Write-Log "Password reset process completed successfully for $Username"
+    Write-Log "Password reset completed for $Username"
     
+    Write-Host ""
+    Write-Host "Password reset for $Username" -ForegroundColor Green
+    Write-Host "Temp password: $NewPassword" -ForegroundColor Yellow
+    Write-Host "User must change password at next logon"
+    Write-Host ""
+
 } catch {
-    $errorMessage = $_.Exception.Message
-    Write-Log "ERROR: Password reset failed for $Username - $errorMessage"
-    Write-Host "`nERROR: $errorMessage`n" -ForegroundColor Red
+    Write-Log "FAILED: $Username - $($_.Exception.Message)"
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
