@@ -1,36 +1,5 @@
 <#
-.SYNOPSIS
     Resets Active Directory user passwords and unlocks accounts.
-
-.DESCRIPTION
-    This script automates password reset requests for help desk operations.
-    It validates the user exists, generates or accepts a temporary password,
-    unlocks the account if locked, and logs all actions for audit compliance.
-
-.PARAMETER Username
-    The SAM account name of the user whose password needs to be reset.
-
-.PARAMETER NewPassword
-    Optional. The temporary password to set. If not provided, a secure random password is generated.
-
-.PARAMETER UnlockAccount
-    Switch. If specified, unlocks the account if it's locked out.
-
-.PARAMETER LogPath
-    Path to the log file. Default: C:\Logs\PasswordResets.log
-
-.EXAMPLE
-    .\Reset-ADUserPassword.ps1 -Username "jsmith"
-    Resets password for jsmith with an auto-generated password.
-
-.EXAMPLE
-    .\Reset-ADUserPassword.ps1 -Username "jsmith" -NewPassword "TempPass123!" -UnlockAccount
-    Resets password to specified value and unlocks the account.
-
-.NOTES
-    Author: Robert Gorman
-    Purpose: Help desk automation for password reset tickets
-    Requirements: Active Directory PowerShell module, appropriate AD permissions
 #>
 
 [CmdletBinding()]

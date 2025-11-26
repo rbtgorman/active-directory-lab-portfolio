@@ -1,16 +1,5 @@
 <#
-.SYNOPSIS
-    Bulk Active Directory user creation from CSV file
-.DESCRIPTION
-    Reads a CSV file and creates AD users with proper attributes and group assignments
-.PARAMETER CsvPath
-    Path to the CSV file containing user data
-.EXAMPLE
-    .\New-BulkADUsers.ps1 -CsvPath "C:\ADScripts\NewUsers.csv"
-.NOTES
-    Author: Your Name
-    Date: 2025-11-04
-    CSV Format: FirstName,LastName,SamAccountName,Department,Title,Office
+Bulk Active Directory user creation from CSV file
 #>
 
 [CmdletBinding()]

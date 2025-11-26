@@ -1,36 +1,5 @@
 <#
-.SYNOPSIS
-    Active Directory health check and security audit tool
-
-.DESCRIPTION
-    Performs comprehensive AD health checks including:
-    - Inactive user accounts
-    - Locked out accounts  
-    - Users with expiring passwords
-    - Disabled accounts in wrong locations
-    Generates HTML report with summary statistics
-
-.PARAMETER InactiveDays
-    Number of days of inactivity before flagging account (default: 90)
-
-.PARAMETER PasswordExpiryWarning
-    Number of days before password expiry to warn (default: 7)
-
-.PARAMETER OutputPath
-    Directory to save reports (default: C:\Reports)
-
-.EXAMPLE
-    .\Get-ADHealthCheck.ps1
-    Runs health check with default parameters
-
-.EXAMPLE
-    .\Get-ADHealthCheck.ps1 -InactiveDays 60 -PasswordExpiryWarning 14
-    Runs health check with custom thresholds
-
-.NOTES
-    Author: Robert Gorman
-    Purpose: Portfolio demonstration - AD security monitoring
-    Business Impact: Reduces security risk through proactive account monitoring
+Active Directory health check and security audit tool
 #>
 
 [CmdletBinding()]
