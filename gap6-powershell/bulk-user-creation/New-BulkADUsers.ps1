@@ -1,34 +1,25 @@
 <#
-Bulk Active Directory user creation from CSV file
+    New-BulkADUsers.ps1 - Create AD users from CSV
 #>
 
-[CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$CsvPath,
-    
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory)][string]$CsvPath,
     [string]$DefaultPassword = "Welcome2025!",
-    
-    [Parameter(Mandatory=$false)]
     [bool]$ChangePasswordAtLogon = $true
 )
 
-# Import CSV
 try {
-    $users = Import-Csv -Path $CsvPath
-    Write-Host "Successfully imported $($users.Count) users from CSV" -ForegroundColor Green
+    $users = Import-Csv $CsvPath
+    Write-Host "Imported $($users.Count) users from CSV" -ForegroundColor Green
 } catch {
     Write-Host "Error importing CSV: $_" -ForegroundColor Red
     exit 1
 }
 
-# Counter for success/failures
-$successCount = 0
-$failCount = 0
+$created = 0
+$failed = 0
 $results = @()
 
-# Process each user
 foreach ($user in $users) {
     $ouPath = switch ($user.Department) {
         "IT"      { "OU=IT,OU=Departments,DC=lab,DC=local" }
@@ -37,74 +28,45 @@ foreach ($user in $users) {
         default   { "OU=Departments,DC=lab,DC=local" }
     }
     
-    $userParams = @{
-        Name                  = "$($user.FirstName) $($user.LastName)"
-        GivenName            = $user.FirstName
-        Surname              = $user.LastName
-        SamAccountName       = $user.SamAccountName
-        UserPrincipalName    = "$($user.SamAccountName)" + "@lab.local"
-        DisplayName          = "$($user.FirstName) $($user.LastName)"
-        Department           = $user.Department
-        Title                = $user.Title
-        Office               = $user.Office
-        Path                 = $ouPath
-        AccountPassword      = (ConvertTo-SecureString $DefaultPassword -AsPlainText -Force)
-        Enabled              = $true
-        ChangePasswordAtLogon = $ChangePasswordAtLogon
+    # Skip if exists
+    if (Get-ADUser -Filter "SamAccountName -eq '$($user.SamAccountName)'" -ErrorAction SilentlyContinue) {
+        Write-Host "$($user.SamAccountName) already exists - skipping" -ForegroundColor Yellow
+        $results += [PSCustomObject]@{ Username = $user.SamAccountName; Status = "Skipped"; Department = $user.Department }
+        continue
     }
     
     try {
-        # Check if user already exists
-        if (Get-ADUser -Filter "SamAccountName -eq '$($user.SamAccountName)'" -ErrorAction SilentlyContinue) {
-            Write-Host "User $($user.SamAccountName) already exists - skipping" -ForegroundColor Yellow
-            $results += [PSCustomObject]@{
-                Username = $user.SamAccountName
-                Status = "Skipped - Already Exists"
-                Department = $user.Department
-            }
-            continue
-        }
+        New-ADUser -Name "$($user.FirstName) $($user.LastName)" `
+            -GivenName $user.FirstName -Surname $user.LastName `
+            -SamAccountName $user.SamAccountName `
+            -UserPrincipalName "$($user.SamAccountName)@lab.local" `
+            -DisplayName "$($user.FirstName) $($user.LastName)" `
+            -Department $user.Department -Title $user.Title -Office $user.Office `
+            -Path $ouPath `
+            -AccountPassword (ConvertTo-SecureString $DefaultPassword -AsPlainText -Force) `
+            -Enabled $true -ChangePasswordAtLogon $ChangePasswordAtLogon
         
-        # Create the user
-        New-ADUser @userParams
-        Write-Host "Created user: $($user.FirstName) $($user.LastName) ($($user.SamAccountName))" -ForegroundColor Green
+        Write-Host "Created: $($user.FirstName) $($user.LastName) ($($user.SamAccountName))" -ForegroundColor Green
         
-        # Add to department group if exists
+        # Add to department group if it exists
         $groupName = "$($user.Department)-Staff"
         if (Get-ADGroup -Filter "Name -eq '$groupName'" -ErrorAction SilentlyContinue) {
-            Add-ADGroupMember -Identity $groupName -Members $user.SamAccountName
-            Write-Host "  Added to group: $groupName" -ForegroundColor Cyan
+            Add-ADGroupMember $groupName -Members $user.SamAccountName
+            Write-Host "  -> Added to $groupName" -ForegroundColor Cyan
         }
         
-        $successCount++
-        $results += [PSCustomObject]@{
-            Username = $user.SamAccountName
-            Status = "Created Successfully"
-            Department = $user.Department
-        }
+        $created++
+        $results += [PSCustomObject]@{ Username = $user.SamAccountName; Status = "Created"; Department = $user.Department }
         
     } catch {
-        Write-Host "Failed to create $($user.SamAccountName): $_" -ForegroundColor Red
-        $failCount++
-        $results += [PSCustomObject]@{
-            Username = $user.SamAccountName
-            Status = "Failed: $_"
-            Department = $user.Department
-        }
+        Write-Host "Failed: $($user.SamAccountName) - $_" -ForegroundColor Red
+        $failed++
+        $results += [PSCustomObject]@{ Username = $user.SamAccountName; Status = "Failed: $_"; Department = $user.Department }
     }
 }
 
-# Summary Report
-Write-Host ""
-Write-Host "========== SUMMARY ==========" -ForegroundColor Cyan
-Write-Host "Total Users Processed: $($users.Count)" -ForegroundColor White
-Write-Host "Successfully Created: $successCount" -ForegroundColor Green
-Write-Host "Failed: $failCount" -ForegroundColor Red
-Write-Host "============================" -ForegroundColor Cyan
-Write-Host ""
+Write-Host "`nProcessed: $($users.Count) | Created: $created | Failed: $failed" -ForegroundColor Cyan
 
-# Export results to CSV
-$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$resultsPath = "C:\ADScripts\BulkUserCreation-Results-$timestamp.csv"
-$results | Export-Csv -Path $resultsPath -NoTypeInformation
-Write-Host "Detailed results exported to: $resultsPath" -ForegroundColor Green
+$resultsPath = "C:\ADScripts\BulkUserCreation-$(Get-Date -f 'yyyyMMdd-HHmmss').csv"
+$results | Export-Csv $resultsPath -NoTypeInformation
+Write-Host "Results exported to: $resultsPath`n" -ForegroundColor Green
