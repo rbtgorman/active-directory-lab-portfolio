@@ -2,11 +2,6 @@
 
 Hands-on Windows Server and Active Directory administration portfolio demonstrating enterprise IT skills through practical lab projects. Built on Windows Server 2022 with KVM virtualization.
 
-## About This Portfolio
-
-This repository documents my journey building System Administrator skills through a home lab environment. Each project addresses real-world enterprise scenarios with production-ready solutions, comprehensive documentation, and quantifiable business impact.
-
-**Target Role:** System Administrator (Windows/AD focus)
 
 **Lab Environment:**
 - Windows Server 2022 Domain Controller (DC01.lab.local)
